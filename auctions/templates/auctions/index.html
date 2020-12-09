@@ -2,6 +2,19 @@
 
 {% block body %}
     <h2>Active Listings</h2>
+    
+    {% for listing in listings %}
+        <a href="{% url 'listing' listing.id %}">
+            <div style="border: 1px solid lightgrey; border-radius: 5px; height: 250px; text-align: left; color: black;">
+                {% if listing.image %}
+                    <img src="{{ listing.image.url }}" style="float: left; height: 200px">
+                {% endif %}
+                <strong>{{ listing.product_name }}</strong><br>
+                Starting/Current Bid: ${{ listing.starting_bid }}<br><br>
+                {{ listing.description }}
+            </div>
+        </a>
+        <br>
+    {% endfor %}
 
-    TODO
 {% endblock %}

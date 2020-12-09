@@ -1,0 +1,12 @@
+{% extends "auctions/layout.html" %}
+
+{% block body %}
+    <h2>Create Listing</h2>
+
+    <form method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="form-control" style="background-color:#0074d9; color: white;">Create Listing</button>
+    </form>
+    
+{% endblock %}

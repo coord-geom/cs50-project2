@@ -1,0 +1,78 @@
+{% extends "auctions/layout.html" %}
+
+{% block body %}
+    <h2>Listing: {{ listing.product_name }}</h2>
+
+    <ul>
+        <li>Created by {{ listing.seller }}</li>
+        
+        <li>
+            {% if categories %}
+
+                Categories listed: 
+                {% if categories|length > 1 %}
+                    {% for category in categories %}
+                        {{ category }},
+                    {% endfor %}
+                {% else %}
+                    {% for category in categories %}
+                        {{ category }}
+                    {% endfor %}
+                {% endif %}
+
+            {% else %}
+                No categories listed
+            {% endif %}
+        </li>
+    </ul>
+
+    {% if listing.image %}
+        <img src="{{ listing.image.url }}" alt="Image of product" style="width: 400px; display: block; margin: auto;"><br>
+    {% else %}
+        No image provided. <br><br>
+    {% endif %}
+
+    <h4>Description</h4>
+    <p>{{ listing.description }}</p>
+
+    {% if listing.active %}
+        {% if bids %}
+            <h4>Current Bid: ${{ bid.bid_price }}</h4>
+            {{ bids|length }} bid(s) so far. 
+            {% if user.is_authenticated %}
+                {% if bid.bidder == user %}
+                    Your bid is the current bid.
+                {% elif listing.seller == user %}
+                {% else %}
+                    Place your bid now!
+                {% endif %}
+            {% else %}
+                Login now or register for an account to place a bid.
+            {% endif %}
+        {% else %}
+            <h4>Starting Bid: ${{ listing.starting_bid }}</h4>
+            No user has placed a bid for this listing. 
+            {% if listing.seller == user %}
+            {% else %}
+                Place your bid now!
+            {% endif %}
+        {% endif %}
+        {% if listing.seller == user %}
+            This listing was created by you.
+        {% else %}
+            <form method="POST">
+                {% csrf_token %}
+                {% if bids %}
+                    <input type="number" name="bid_price" class="form-control" min="{{ min_bid }}" step="0.01" required id="id_bid_price">
+                {% else %}
+                    <input type="number" name="bid_price" class="form-control" min="{{ listing.starting_bid }}" step="0.01" required id="id_bid_price">
+                {% endif %}
+                <br>
+                <button type="submit" class="form-control" style="background-color:#0074d9; color: white;">Place Bid</button>
+            </form>
+        {% endif %}
+    {% else %}
+        This listing has been closed. 
+    {% endif %}
+
+{% endblock %}

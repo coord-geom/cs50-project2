@@ -1,0 +1,21 @@
+{% extends "auctions/layout.html" %}
+
+{% block body %}
+    <h2>My Listings</h2>
+    
+    {% if listings|length == 0 %}
+        You have not created any listings.
+    {% else %}
+        {% for listing in listings %}
+            <a href="{% url 'listing' listing.id %}">
+                <div style="border: 1px solid lightgrey; border-radius: 5px; height: 250px;">
+                    <strong>{{ listing.product_name }}</strong><br>
+                    Price: ${{ listing.starting_bid }}<br>
+                    Created on {{ listing.date }}
+                </div>
+            </a>
+            <br>
+        {% endfor %}
+    {% endif %}
+
+{% endblock %}
