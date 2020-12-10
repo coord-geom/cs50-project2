@@ -29,8 +29,21 @@ class NewListingForm(forms.ModelForm):
         }
 
 def index(request):
+    pairs = []
+    for listing in Listing.objects.exclude(active=False):
+        bids = Bid.objects.filter(listing = listing)
+        highest_bid = 0.00
+        bid = None
+        for bid_ in bids:
+            if highest_bid < bid_.bid_price:
+                highest_bid = bid_.bid_price
+                bid = bid_
+        if highest_bid == 0.00:
+            pairs.append([listing, False])
+        else:
+            pairs.append([listing, highest_bid])
     return render(request, "auctions/index.html", {
-        'listings': Listing.objects.exclude(active=False)
+        'pairs': pairs
     })
 
 def categories(request):

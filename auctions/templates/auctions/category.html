@@ -8,7 +8,7 @@
             <a href="{% url 'listing' listing.id %}">
                 <div style="border: 1px solid lightgrey; border-radius: 5px; height: 250px; text-align: left; color: black;">
                     {% if listing.image %}
-                        <img src="{{ listing.image }}" style="float: left; height: 200px">
+                        <img src="{{ listing.image }}" style="float: left; height: 200px; margin-left: 2%; margin-right: 5%; margin-top: 1%;">
                     {% endif %}
                     <strong>{{ listing.product_name }}</strong><br>
                     Starting/Current Bid: ${{ listing.starting_bid }}<br><br>

@@ -3,15 +3,20 @@
 {% block body %}
     <h2>Active Listings</h2>
     
-    {% if listings %}
-        {% for listing in listings %}
+    {% if pairs %}
+        {% for listing, bid in pairs %}
             <a href="{% url 'listing' listing.id %}">
                 <div style="border: 1px solid lightgrey; border-radius: 5px; height: 250px; text-align: left; color: black;">
                     {% if listing.image %}
                         <img src="{{ listing.image }}" style="float: left; height: 200px; margin-left: 2%; margin-right: 5%; margin-top: 1%;">
                     {% endif %}
                     <strong>{{ listing.product_name }}</strong><br>
-                    Starting/Current Bid: ${{ listing.starting_bid }}<br><br>
+        
+                    {% if bid %}
+                        Starting/Current Bid: ${{ bid }}<br><br>
+                    {% else %}
+                        Starting/Current Bid: ${{ listing.starting_bid }}<br><br>
+                    {% endif %}
                     {{ listing.description }}
                 </div>
             </a>
