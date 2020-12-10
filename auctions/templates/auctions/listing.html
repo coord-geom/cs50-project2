@@ -4,7 +4,7 @@
     <h2>Listing: {{ listing.product_name }}</h2>
 
     <ul>
-        <li>Created by {{ listing.seller }}</li>
+        <li>Listed by: {{ listing.seller }}</li>
         
         <li>
             {% if categories %}
@@ -26,8 +26,23 @@
         </li>
     </ul>
 
+    {% if user.is_authenticated %}
+        {% if in_watchlist %}
+            <form method="POST">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary" name="remove_from_watchlist">Remove from Watchlist</button>
+            </form>
+        {% else %}
+            <form method="POST">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary" name="add_to_watchlist">Add to Watchlist</button>
+            </form>
+        {% endif %}
+    {% endif %}
+
     {% if listing.image %}
-        <img src="{{ listing.image.url }}" alt="Image of product" style="width: 400px; display: block; margin: auto;"><br>
+        {% load static %}
+        <img src="{{ listing.image }}" alt="Image of product" style="width: 400px; display: block; margin: auto;"><br>
     {% else %}
         No image provided. <br><br>
     {% endif %}
@@ -53,13 +68,19 @@
             <h4>Starting Bid: ${{ listing.starting_bid }}</h4>
             No user has placed a bid for this listing. 
             {% if listing.seller == user %}
-            {% else %}
+            {% elif user.is_authenticated %}
                 Place your bid now!
+            {% else %}
+                Login now or register for an account to place a bid.
             {% endif %}
         {% endif %}
         {% if listing.seller == user %}
-            This listing was created by you.
-        {% else %}
+            This listing was created by you.<br><br>
+            <form method="POST">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary" name="close_auction">Close Auction</button>
+            </form>
+        {% elif user.is_authenticated %}
             <form method="POST">
                 {% csrf_token %}
                 {% if bids %}
@@ -68,11 +89,38 @@
                     <input type="number" name="bid_price" class="form-control" min="{{ listing.starting_bid }}" step="0.01" required id="id_bid_price">
                 {% endif %}
                 <br>
-                <button type="submit" class="form-control" style="background-color:#0074d9; color: white;">Place Bid</button>
+                <button type="submit" class="btn btn-primary" name="place_bid">Place Bid</button>
             </form>
         {% endif %}
     {% else %}
-        This listing has been closed. 
+        This listing has been closed.
+        {% if listing.winner == user %}
+            Congratulations, you have won the auction!
+        {% endif %}
     {% endif %}
-
+    <br><br>
+    <h4>Comments</h4>
+    {% if user.is_authenticated %}
+        <form method="POST">
+            {% csrf_token %}
+            <textarea name="message" cols="40" rows="10" class="form-control" required="" id="id_message" spellcheck="false" style="margin-top: 0px; margin-bottom: 0px; height: 130px;"></textarea>
+            <br>
+            <button type="submit" class="btn btn-primary" 
+            style="width: 20%;" name="post_comment">Post Comment</button>
+        </form>
+    {% else %}
+        Sign in to post a comment on this listing.
+    {% endif %}
+    <br>
+    {% if comments %}
+        {% for comment in comments %}
+            <div style="height: 130px; border: 1px solid lightgrey; border-radius: 5px;">
+                Comment by {{ comment.commenter }} on {{ comment.date }}<hr>
+                {{ comment.message }}
+            </div>
+            <br>
+        {% endfor %}
+    {% else %}
+        No comments have been made on this listing.
+    {% endif %}
 {% endblock %}

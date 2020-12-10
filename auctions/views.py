@@ -6,22 +6,27 @@ from django.urls import reverse
 from django import forms
 from django.contrib.auth.decorators import login_required
 
-from decimal import Decimal
+from .models import User, Listing, Category, Bid, Comment, Watchlist
 
-from .models import User, Listing, Category, Bid
+class NewListingForm(forms.ModelForm):
 
-class NewListingForm(forms.Form):
-    product_name = forms.CharField(max_length=256, label="Product Name", \
-        widget=forms.TextInput(attrs={'class': "form-control"}))
-    description = forms.CharField(widget=forms.Textarea(attrs={'class': "form-control"}))
-    starting_bid = forms.DecimalField(label="Starting Bid (in dollars)", \
-        max_digits=20, decimal_places=2, widget=forms.NumberInput(attrs={'class': 'form-control'}))
-    product_image = forms.ImageField(required=False, label="Product Image (optional)")
-    categories = forms.ModelMultipleChoiceField(
-                    widget = forms.CheckboxSelectMultiple,
-                    queryset = Category.objects.all()
-                )
+    class Meta:
+        model = Listing
+        fields = ['product_name', 'description', 'starting_bid', 'image', 'categories']
+        widgets = {
+            'product_name': forms.TextInput(attrs={'class': "form-control"}),
+            'description':  forms.Textarea(attrs={'class': "form-control"}),
+            'starting_bid': forms.NumberInput(attrs={'class': 'form-control'}),
+            'categories': forms.CheckboxSelectMultiple,
+            'image': forms.TextInput(attrs={'class': 'form-control'})
+        }
 
+        labels = {
+            'product_name': 'Product Name',
+            'starting_bid': 'Starting Bid (in dollars)',
+            'image': 'Product Image URL (optional)',
+            'categories': 'Categories (optional)'
+        }
 
 def index(request):
     return render(request, "auctions/index.html", {
@@ -42,21 +47,12 @@ def create_listing(request):
     elif request.method == "POST":
         form = NewListingForm(request.POST, request.FILES)
         if form.is_valid():
-            product_name = form.cleaned_data["product_name"]
-            description = form.cleaned_data["description"]
-            starting_bid = form.cleaned_data["starting_bid"]
-            product_image = form.cleaned_data["product_image"]
-            obj = Listing.objects.create(
-                seller = request.user,
-                product_name = product_name,
-                description = description,
-                starting_bid = starting_bid,
-                image = product_image,
-            )
-            obj.categories.set(form.cleaned_data["categories"])
-            obj.save()
+            form.instance.seller = request.user
+            form.save()
             return HttpResponseRedirect(reverse('listing', \
                 kwargs={"ID": Listing.objects.latest('id').id}))
+        else:
+            return HttpResponseRedirect(reverse('create_listing'))
 
 def login_view(request):
     if request.method == "POST":
@@ -82,7 +78,6 @@ def logout_view(request):
     logout(request)
     return HttpResponseRedirect(reverse("index"))
 
-
 def register(request):
     if request.method == "POST":
         username = request.POST["username"]
@@ -104,6 +99,7 @@ def register(request):
             return render(request, "auctions/register.html", {
                 "message": "Username already taken."
             })
+        Watchlist.objects.create(user=User.objects.get(username=username)).save()
         login(request, user)
         return HttpResponseRedirect(reverse("index"))
     else:
@@ -118,47 +114,87 @@ def my_listings(request):
 def listings(request, ID):
     if request.method == "GET":
         if Listing.objects.filter(id=ID).exists():
-            found_listing = Listing.objects.get(id=ID)
-            bids = Bid.objects.filter(listing = found_listing)
+            listing_ = Listing.objects.get(id=ID)
+            bids = Bid.objects.filter(listing = listing_)
             highest_bid = 0.00
             bid = None
             for bid_ in bids:
                 if highest_bid < bid_.bid_price:
                     highest_bid = bid_.bid_price
                     bid = bid_
-            highest_bid += Decimal(0.01)
-            return render(request, "auctions/listing.html", {
-                "listing": found_listing,
-                "categories": found_listing.categories.all(),
-                "bid": bid,
-                "bids": bids,
-                "user": request.user,
-                "min_bid": highest_bid
-            })
+            highest_bid = float(highest_bid)
+            highest_bid += 0.01
+            if request.user.is_authenticated:
+                in_watchlist = (listing_ in Watchlist.objects.get(user=request.user).listings.all())
+                return render(request, "auctions/listing.html", {
+                    "listing": listing_,
+                    "categories": listing_.categories.all(),
+                    "bid": bid,
+                    "bids": bids,
+                    "user": request.user,
+                    "min_bid": highest_bid,
+                    "comments": Comment.objects.filter(listing=listing_),
+                    "in_watchlist": in_watchlist
+                })
+            else:
+                return render(request, "auctions/listing.html", {
+                    "listing": listing_,
+                    "categories": listing_.categories.all(),
+                    "bid": bid,
+                    "bids": bids,
+                    "user": request.user,
+                    "min_bid": highest_bid,
+                    "comments": Comment.objects.filter(listing=listing_)
+                })
         return HttpResponseRedirect(reverse('index'))
     elif request.method == "POST":
-        bid_price = request.POST["bid_price"]
-        obj = Bid.objects.create(
-            bidder = request.user,
-            bid_price = bid_price,
-            listing = Listing.objects.get(id=ID)
-        )
-        obj.save()
-        found_listing = Listing.objects.get(id=ID)
-        bids = Bid.objects.filter(listing = found_listing)
-        highest_bid = 0.00
-        bid = None
-        for bid_ in bids:
-            if highest_bid < bid_.bid_price:
-                highest_bid = bid_.bid_price
-                bid = bid_
-        highest_bid += Decimal(0.01)
-        return render(request, "auctions/listing.html", {
-            "listing": found_listing,
-            "categories": found_listing.categories.all(),
-            "bid": bid,
-            "bids": bids,
-            "user": request.user,
-            "min_bid": highest_bid
+        listing_ = Listing.objects.get(id=ID)
+        if 'place_bid' in request.POST:
+            bid_price = request.POST["bid_price"]
+            Bid.objects.create(
+                bidder = request.user,
+                bid_price = bid_price,
+                listing = Listing.objects.get(id=ID)
+            ).save()
+        elif 'post_comment' in request.POST:
+            message = request.POST["message"]
+            Comment.objects.create(
+                commenter = request.user,
+                message = message,
+                listing = Listing.objects.get(id=ID)
+            ).save()
+        elif 'add_to_watchlist' in request.POST:
+            Watchlist.objects.get(user=request.user).listings.add(listing_)
+        elif 'remove_from_watchlist' in request.POST:
+            Watchlist.objects.get(user=request.user).listings.remove(listing_)
+        elif 'close_auction' in request.POST:
+            highest_bid = 0.00
+            bid = None
+            for bid_ in Bid.objects.filter(listing=listing_).all():
+                if highest_bid < bid_.bid_price:
+                    highest_bid = bid_.bid_price
+                    bid = bid_
+            listing_.active = False
+            if not bid is None:
+                listing_.winner = bid.bidder
+            listing_.save()
+        return HttpResponseRedirect(reverse('listing', kwargs={'ID': ID}))
+
+def category(request, ID):
+    if Category.objects.filter(id=ID).exists():
+        category_ = Category.objects.get(id=ID)
+        listings = []
+        for listing in Listing.objects.exclude(active=False):
+            if category_ in listing.categories.all():
+                listings.append(listing)
+        return render(request, 'auctions/category.html', {
+            "listings": listings,
+            "category": category_
         })
+    else:
+        return HttpResponseRedirect(reverse('categories'))
         
+def watchlist(request):
+    return render(request, 'auctions/watchlist.html', {
+        'listings': Watchlist.objects.get(user=request.user).listings.all()
+    })

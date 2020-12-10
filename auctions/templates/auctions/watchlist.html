@@ -1,9 +1,11 @@
 {% extends "auctions/layout.html" %}
 
 {% block body %}
-    <h2>My Listings</h2>
+    <h2>Watchlist</h2>
     
-    {% if listings %}
+    {% if listings|length == 0 %}
+        You have not added any listings to your watchlist.
+    {% else %}
         {% for listing in listings %}
             <a href="{% url 'listing' listing.id %}">
                 <div style="border: 1px solid lightgrey; border-radius: 5px; height: 250px; text-align: left; color: black;">
@@ -17,8 +19,5 @@
             </a>
             <br>
         {% endfor %}
-    {% else %}
-        You have not created any listings.
     {% endif %}
-
 {% endblock %}
